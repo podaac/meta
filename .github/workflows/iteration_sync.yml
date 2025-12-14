@@ -27,6 +27,24 @@ jobs:
               "SOTO PI 25.4"
             ];
             
+            async function getProjectByTitle(title) {
+              const query = `
+                query ($org: String!) {
+                  organization(login: $org) {
+                    projectsV2(first: 50) {
+                      nodes {
+                        id
+                        title
+                        number
+                      }
+                    }
+                  }
+                }
+              `;
+              const res = await github.graphql(query, { org: ORG });
+              return res.organization.projectsV2.nodes.find(p => p.title === title);
+            }
+            
             for (const sourceName of ALLOWED_SOURCE_PROJECTS) {
               const sourceProject = await getProjectByTitle(sourceName);
               if (!sourceProject) continue;
