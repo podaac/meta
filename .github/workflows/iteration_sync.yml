@@ -1,16 +1,9 @@
 name: Sync Iteration to TVA
 
 on:
-  projects_v2_item:
-    types:
-      - created
-      - edited
-
-permissions:
-  issues: read
-  contents: read
-  projects: write
-
+  schedule:
+    - cron: "*/10 * * * *"   # every 10 minutes
+  workflow_dispatch:
 
 jobs:
   sync-iteration:
