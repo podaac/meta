@@ -22,168 +22,21 @@ jobs:
             const ORG = "podaac";
             const TVA_PROJECT_NUMBER = 74; // TVA project number
 
-            const itemId = context.payload.projects_v2_item?.node_id;
-            if (!itemId) {
-              console.log("No project item found");
-              return;
-            }
-            
             const ALLOWED_SOURCE_PROJECTS = [
               "hitide-25.4",
               "SOTO PI 25.4"
             ];
-
-            const query = `
-              query ($itemId: ID!) {
-                node(id: $itemId) {
-                  ... on ProjectV2Item {
-                    project {
-                      id
-                      title
-                    }
-                    content {
-                      ... on Issue {
-                        id
-                        number
-                        repository { name }
-                      }
-                    }
-                    fieldValues(first: 20) {
-                      nodes {
-                        ... on ProjectV2ItemFieldIterationValue {
-                          title
-                          field {
-                            ... on ProjectV2IterationField {
-                              id
-                              name
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            `;
             
-            const result = await github.graphql(query, { itemId });
+            for (const sourceName of ALLOWED_SOURCE_PROJECTS) {
+              const sourceProject = await getProjectByTitle(sourceName);
+              if (!sourceProject) continue;
 
-            const sourceProjectName = result.node.project.title;
+              const items = await getItems(sourceProject.id);
 
-            if (!ALLOWED_SOURCE_PROJECTS.includes(sourceProjectName)) {
-              console.log(
-                `Skipping source project: ${sourceProjectName}`
-              );
-              return;
-            }
-
-            console.log(`Syncing from source project: ${sourceProjectName}`);
-
-            const issue = result.node.content;
-
-            if (!issue) {
-              console.log("Item is not an issue");
-              return;
-            }
-
-            const iteration = result.node.fieldValues.nodes.find(
-              v => v.field?.name === "Sprint"
-            );
-
-            if (!iteration) {
-              console.log("No iteration found");
-              return;
-            }
-
-            console.log(`Issue #${issue.number} iteration: ${iteration.title}`);
-
-            // Get TVA project + iteration field
-            const tvaQuery = `
-              query ($org: String!, $number: Int!) {
-                organization(login: $org) {
-                  projectV2(number: $number) {
-                    id
-                    fields(first: 20) {
-                      nodes {
-                        ... on ProjectV2IterationField {
-                          id
-                          name
-                          configuration {
-                            iterations {
-                              id
-                              title
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
+              for (const item of items) {
+                console.log(`Processing item: ${item.title}`);
               }
-            `;
 
-            const tva = await github.graphql(tvaQuery, {
-              org: ORG,
-              number: TVA_PROJECT_NUMBER
-            });
-
-            const tvaProject = tva.organization.projectV2;
-            const tvaIterationField = tvaProject.fields.nodes.find(
-              f => f.name === "Iteration"
-            );
-
-            if (!tvaIterationField) {
-              throw new Error("TVA iteration field not found");
-            }
-
-            const targetIteration = tvaIterationField.configuration.iterations.find(
-              i => i.title === iteration.title
-            );
-
-            if (!targetIteration) {
-              console.log("Matching iteration not found in TVA");
-              return;
-            }
-
-            // Add issue to TVA project if needed
-            const addItem = `
-              mutation ($projectId: ID!, $contentId: ID!) {
-                addProjectV2ItemById(
-                  projectId: $projectId
-                  contentId: $contentId
-                ) {
-                  item { id }
-                }
-              }
-            `;
-
-            const added = await github.graphql(addItem, {
-              projectId: tvaProject.id,
-              contentId: issue.id
-            });
-
-            const tvaItemId = added.addProjectV2ItemById.item.id;
-
-            // Set iteration
-            const update = `
-              mutation ($itemId: ID!, $fieldId: ID!, $iterationId: String!) {
-                updateProjectV2ItemFieldValue(
-                  input: {
-                    projectId: "${tvaProject.id}"
-                    itemId: $itemId
-                    fieldId: $fieldId
-                    value: { iterationId: $iterationId }
-                  }
-                ) {
-                  projectV2Item { id }
-                }
-              }
-            `;
-
-            await github.graphql(update, {
-              itemId: tvaItemId,
-              fieldId: tvaIterationField.id,
-              iterationId: targetIteration.id
-            });
+            
 
             console.log("Iteration synced to TVA");
