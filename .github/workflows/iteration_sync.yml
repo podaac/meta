@@ -45,7 +45,45 @@ jobs:
               return res.organization.projectsV2.nodes.find(p => p.title === title);
             }
             
+            async function getItems(projectId) {
+              const query = `
+                query ($projectId: ID!) {
+                  node(id: $projectId) {
+                    ... on ProjectV2 {
+                      items(first: 100) {               # adjust pagination if needed
+                        nodes {
+                          id
+                          content {
+                            ... on Issue {
+                              id
+                              number
+                              repository { name }
+                            }
+                          }
+                          fieldValues(first: 20) {
+                            nodes {
+                              ... on ProjectV2ItemFieldIterationValue {
+                                title
+                                field {
+                                  ... on ProjectV2IterationField {
+                                    name
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              `;
+              const res = await github.graphql(query, { projectId });
+              return res.node.items.nodes;
+            }
+            
             for (const sourceName of ALLOWED_SOURCE_PROJECTS) {
+              console.log(`Processing source project: ${sourceName}`);
               const sourceProject = await getProjectByTitle(sourceName);
               if (!sourceProject) continue;
 
