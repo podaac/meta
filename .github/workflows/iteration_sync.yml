@@ -37,6 +37,6 @@ jobs:
                 console.log(`Processing item: ${item.title}`);
               }
 
-            
+            }
 
             console.log("Iteration synced to TVA");
