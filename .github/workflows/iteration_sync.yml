@@ -136,7 +136,6 @@ jobs:
                 if (!sourceIteration) continue; 
                 console.log(`Fetching source iteration for item ${sourceIteration}`);
                 
-                console.log(JSON.stringify(tvaIterationField.configuration.iterations, null, 2));
                 const targetIteration = tvaIterationField.configuration.iterations.find(
                   i => i.title === sourceIteration
                 );
@@ -147,10 +146,32 @@ jobs:
                   continue;
                 }
             
+                // 2️⃣ Set iteration field in TVA
+                // we assume the issue is already added to the TVA project
+                const updateMutation = `
+                  mutation ($projectId: ID!, $itemId: ID!, $fieldId: ID!, $iterationId: String!) {
+                    updateProjectV2ItemFieldValue(
+                      input: {
+                        projectId: $projectId
+                        itemId: $itemId
+                        fieldId: $fieldId
+                        value: { iterationId: $iterationId }
+                      }
+                    ) {
+                      projectV2Item { id }
+                    }
+                  }
+                `;
+              
+                await github.graphql(updateMutation, {
+                  projectId: tvaProject.id,
+                  itemId: item.content.id,
+                  fieldId: tvaIterationField.id,
+                  iterationId: targetIteration.id
+                });
+            
                 console.log(`Found target iteration "${targetIteration.title}" with ID ${targetIteration.id}`);
               
-
-            
               }
 
             }
