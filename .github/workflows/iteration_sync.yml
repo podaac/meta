@@ -134,11 +134,13 @@ jobs:
                 )?.title;
 
                 if (!sourceIteration) continue; 
-                console.log(`Fetching iteration for item ${sourceIteration}`);
+                console.log(`Fetching source iteration for item ${sourceIteration}`);
                 
+                console.log(JSON.stringify(tvaIterationField.configuration.iterations, null, 2));
                 const targetIteration = tvaIterationField.configuration.iterations.find(
                   i => i.title === sourceIteration
                 );
+                
               
                 if (!targetIteration) {
                   console.log(`Skipping issue #${item.content.number}, iteration "${sourceIteration}" not found in TVA`);
