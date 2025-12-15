@@ -128,7 +128,13 @@ jobs:
                 if (!item.content) continue;
 
                 // Get the source iteration title
-                console.log(`Fetching iteration for item ${item.fieldValues.nodes}`);
+  
+                const sourceIteration = item.fieldValues.nodes.find(
+                  v => v.field?.name === "Iteration"
+                )?.title;
+
+                if (!sourceIteration) continue; 
+                console.log(`Fetching iteration for item ${sourceIteration}`);
                 
             
               }
