@@ -86,30 +86,23 @@ def sync_iterations():
         return
 
     mutation = """
-    mutation ($fieldId: ID!, $projectId: ID!, $iterations: [ProjectV2IterationFieldIterationInput!]!) {
-      updateProjectV2IterationField(
+    mutation ($fieldId: ID!, $iterations: [ProjectV2Iteration!]!) {
+      updateProjectV2Field(
         input: {
-          projectId: $projectId
           fieldId: $fieldId
-          iterations: $iterations
+          iterationConfiguration: {
+            iterations: $iterations
+          }
         }
       ) {
-        projectV2IterationField {
-          id
+        projectV2Field {
+          ... on ProjectV2IterationField {
+            id
+          }
         }
       }
     }
     """
-
-    # Existing iterations must be included (with id) so they are not deleted.
-    # New iterations are appended without an id so GitHub creates them.
-    all_iterations = [
-        {"id": it["id"], "title": it["title"], "startDate": it["startDate"], "duration": it["duration"]}
-        for it in target_iterations
-    ] + [
-        {"title": it["title"], "startDate": it["startDate"], "duration": it["duration"]}
-        for it in new_iterations
-    ]
 
     for it in new_iterations:
         print(f"Creating iteration: {it['title']}")
@@ -117,9 +110,11 @@ def sync_iterations():
     graphql(
         mutation,
         {
-            "projectId": target_project_id,
             "fieldId": target_field["id"],
-            "iterations": all_iterations,
+            "iterations": [
+                {"title": it["title"], "startDate": it["startDate"], "duration": it["duration"]}
+                for it in new_iterations
+            ],
         },
     )
 
