@@ -26,13 +26,16 @@ def graphql(query, variables=None):
         json={"query": query, "variables": variables or {}},
     )
     r.raise_for_status()
-    return r.json()["data"]
+    body = r.json()
+    if "errors" in body:
+        raise RuntimeError(f"GraphQL errors: {body['errors']}")
+    return body["data"]
 
 
 def get_project(project_number):
     query = """
     query ($org: String!, $number: Int!) {
-      user(login: login) {
+      organization(login: $org) {
         projectV2(number: $number) {
           id
           fields(first: 50) {
