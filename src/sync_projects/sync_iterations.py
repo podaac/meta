@@ -79,40 +79,49 @@ def sync_iterations():
 
     existing_titles = {it["title"] for it in target_iterations}
 
+    new_iterations = [it for it in source_iterations if it["title"] not in existing_titles]
+
+    if not new_iterations:
+        print("No new iterations to create.")
+        return
+
     mutation = """
-    mutation ($fieldId: ID!, $projectId: ID!, $title: String!, $start: Date!, $duration: Int!) {
-      addProjectV2Iteration(
+    mutation ($fieldId: ID!, $projectId: ID!, $iterations: [ProjectV2IterationFieldIterationInput!]!) {
+      updateProjectV2IterationField(
         input: {
           projectId: $projectId
           fieldId: $fieldId
-          title: $title
-          startDate: $start
-          duration: $duration
+          iterations: $iterations
         }
       ) {
-        iteration {
+        projectV2IterationField {
           id
         }
       }
     }
     """
 
-    for it in source_iterations:
-        if it["title"] in existing_titles:
-            continue
+    # Existing iterations must be included (with id) so they are not deleted.
+    # New iterations are appended without an id so GitHub creates them.
+    all_iterations = [
+        {"id": it["id"], "title": it["title"], "startDate": it["startDate"], "duration": it["duration"]}
+        for it in target_iterations
+    ] + [
+        {"title": it["title"], "startDate": it["startDate"], "duration": it["duration"]}
+        for it in new_iterations
+    ]
 
+    for it in new_iterations:
         print(f"Creating iteration: {it['title']}")
 
-        graphql(
-            mutation,
-            {
-                "projectId": target_project_id,
-                "fieldId": target_field["id"],
-                "title": it["title"],
-                "start": it["startDate"],
-                "duration": it["duration"],
-            },
-        )
+    graphql(
+        mutation,
+        {
+            "projectId": target_project_id,
+            "fieldId": target_field["id"],
+            "iterations": all_iterations,
+        },
+    )
 
 
 if __name__ == "__main__":
