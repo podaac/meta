@@ -44,6 +44,8 @@ def get_project(project_number):
                 id
                 name
                 configuration {
+                  startDate
+                  duration
                   iterations {
                     id
                     title
@@ -86,11 +88,13 @@ def sync_iterations():
         return
 
     mutation = """
-    mutation ($fieldId: ID!, $iterations: [ProjectV2Iteration!]!) {
+    mutation ($fieldId: ID!, $startDate: Date!, $duration: Int!, $iterations: [ProjectV2Iteration!]!) {
       updateProjectV2Field(
         input: {
           fieldId: $fieldId
           iterationConfiguration: {
+            startDate: $startDate
+            duration: $duration
             iterations: $iterations
           }
         }
@@ -104,6 +108,8 @@ def sync_iterations():
     }
     """
 
+    config = target_field["configuration"]
+
     for it in new_iterations:
         print(f"Creating iteration: {it['title']}")
 
@@ -111,6 +117,8 @@ def sync_iterations():
         mutation,
         {
             "fieldId": target_field["id"],
+            "startDate": config["startDate"],
+            "duration": config["duration"],
             "iterations": [
                 {"title": it["title"], "startDate": it["startDate"], "duration": it["duration"]}
                 for it in new_iterations
